@@ -139,6 +139,41 @@ Here is exactly what the system exports when requested (e.g., `attendance/daily_
 
 ---
 
+## 🛠️ Troubleshooting & Local Calibration
+
+### ❌ Camera fails to open
+If the system shows "Could not open webcam", your device might have a different index.
+In `src/detector.py`, try changing:
+```python
+video_capture = cv2.VideoCapture(0)  # Try (1) or (2) if (0) fails
+```
+
+### ❌ Slow Frame Rate (FPS)
+If the video lags, you can increase the downscaling in `src/detector.py`:
+```python
+small_frame = cv2.resize(frame, (0, 0), fx=0.2, fy=0.2) # Default is 0.25 (1/4th)
+```
+
+### ❌ Installation Issues on Fedora/Linux
+If `pip install dlib` fails, ensure you have the system dependencies:
+```bash
+sudo dnf install cmake gcc-c++ python3-devel boost-devel
+# Then run
+pip install dlib face_recognition
+```
+
+---
+
+## 🧪 Final Demo Checklist
+Before presenting to a client, perform these 5 checks:
+1.  **CLI Test:** Ensure the menu opens with `python main.py`.
+2.  **Registration Test:** Register a test user and verify images appear in `/dataset`.
+3.  **Recognition Test:** Ensure the Green box appears with your name and >55% confidence.
+4.  **Security Test:** Show a non-registered face and verify the "Unknown" Red box triggers.
+5.  **Record Test:** Export the attendance and verify the CSV contains correct timestamps.
+
+---
+
 ## 🚀 Future Improvements
 
 - [ ] **Web Dashboard:** Migrate from CLI to a streamlined Flask/Django or React Admin portal for easier remote access.

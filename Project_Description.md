@@ -202,13 +202,19 @@ The system uses the **HOG** method from dlib.
 * **Camera Angle:** Requires a relatively clear frontal or near-frontal view.
 * **Resource Usage:** Training/Encoding large datasets can be CPU intensive.
 
-## 19. Future Enhancements
-* **Multi-Face Marking:** Optimizing the loop to mark 10+ students simultaneously in a classroom.
-* **Anti-Spoofing:** Adding liveness detection (blink detection) to prevent photo-based fraud.
-* **Cloud Integration:** Syncing the local SQLite DB with a remote Firebase/AWS database.
-* **Web UI:** Developing a React/Flask dashboard for administrative remote management.
+## 19. Troubleshooting & Troubleshooting Logic
+### Common Runtime Issues:
+1. **Camera Index Errors:** Default `VideoCapture(0)` may fail on multi-camera setups. Logic should allow fallback to `Index 1`.
+2. **Lighting Sensitivity:** The HOG detector requires sufficient ambient light to calculate gradient orientations accurately.
+3. **Library Compilation:** `dlib` requires `cmake` and `gcc-c++` for source-level compilation on Linux kernels.
 
-## 20. Conclusion
+## 20. Demo Performance Checklist
+* **Operational Test:** CLI Menu responsiveness.
+* **Biometric Accuracy:** Correct identification vs False Positives (Unknown).
+* **Database Logic:** Unique constraint validation (preventing double entries).
+* **Export Precision:** CSV formatting and date-time accuracy.
+
+## 21. Conclusion
 The **Face Recognition-Based Attendance System** successfully implements a robust, automated biometric solution. By combining dlib's recognition accuracy with SQLite's data integrity, it provides a professional-grade MVP suitable for schools, offices, and small-to-medium organizations looking to modernize their operational efficiency.
 
 ---
