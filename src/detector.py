@@ -29,6 +29,10 @@ class FaceDetector:
             print("[ERROR] Could not open webcam.")
             return
 
+        # Tracking for auto-close feature
+        last_success_time = None
+        success_message = ""
+
         # Optimization: process every other frame
         process_this_frame = True
 
@@ -57,7 +61,8 @@ class FaceDetector:
                     confidence = 0.0
 
                     if len(self.known_face_encodings) > 0:
-                        matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding, tolerance=0.5)
+                        # Increased tolerance to 0.6 for better detection in varying light
+                        matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding, tolerance=0.6)
                         face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
                         
                         best_match_index = np.argmin(face_distances)
@@ -69,8 +74,11 @@ class FaceDetector:
                             confidence = max(0, min(100, round((1.0 - distance) * 100, 2)))
 
                             # Mark attendance if confidence > threshold
-                            if confidence > 55.0:
-                                self.attendance_manager.mark_attendance(name, course_id=course_id)
+                            if confidence > 50.0:
+                                success = self.attendance_manager.mark_attendance(name, course_id=course_id)
+                                if success:
+                                    last_success_time = datetime.now()
+                                    success_message = f"ATTENDANCE MARKED: {name}"
                             else:
                                 name = "Unknown"
                                 
@@ -80,6 +88,7 @@ class FaceDetector:
             process_this_frame = not process_this_frame
 
             # Display the results
+            font = cv2.FONT_HERSHEY_DUPLEX
             for (top, right, bottom, left), name, confidence in zip(face_locations, face_names, confidence_scores):
                 # Scale back up face locations
                 top *= 4
@@ -87,30 +96,35 @@ class FaceDetector:
                 bottom *= 4
                 left *= 4
 
-                # Choose color based on recognition status (Green for known, Red for Unknown)
+                # Choose color based on recognition status
                 color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
-
-                # Draw a box around the face
                 cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-
-                # Draw a label with a name, confidence, and timestamp below the face
                 cv2.rectangle(frame, (left, bottom - 45), (right, bottom), color, cv2.FILLED)
-                font = cv2.FONT_HERSHEY_DUPLEX
                 
                 label_name = f"{name} ({confidence}%)" if name != "Unknown" else "Unknown"
-                timestamp = datetime.now().strftime("%H:%M:%S")
-                
                 cv2.putText(frame, label_name, (left + 6, bottom - 20), font, 0.5, (255, 255, 255), 1)
-                cv2.putText(frame, timestamp, (left + 6, bottom - 4), font, 0.4, (255, 255, 255), 1)
+                cv2.putText(frame, datetime.now().strftime("%H:%M:%S"), (left + 6, bottom - 4), font, 0.4, (255, 255, 255), 1)
 
-            # Display timestamp at the corner of the entire frame for demo clarity
+            # --- Visual Feedback & Auto-Close Logic ---
+            if last_success_time:
+                elapsed = (datetime.now() - last_success_time).total_seconds()
+                if elapsed < 3.0:
+                    # Draw a large success banner
+                    cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 255, 0), cv2.FILLED)
+                    cv2.putText(frame, success_message, (50, 65), font, 1.2, (255, 255, 255), 3)
+                    cv2.putText(frame, f"Closing in {int(4-elapsed)}s...", (frame.shape[1]-200, 150), font, 0.7, (0, 255, 0), 2)
+                else:
+                    # Automatically close after the success message duration
+                    print(f"[INFO] Auto-closing session for {success_message}")
+                    break
+
+            # Display timestamp at the corner
             cv2.putText(frame, f"System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
-            # Display the resulting image
-            cv2.imshow('Face Recognition Live Tracking Component', frame)
+            cv2.imshow('Face Recognition Live Tracking', frame)
 
-            # Hit 'q' on the keyboard to quit!
+            # Hit 'q' to quit manually
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
