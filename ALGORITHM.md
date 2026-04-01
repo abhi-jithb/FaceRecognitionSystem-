@@ -4,60 +4,62 @@ This document outlines the step-by-step logic and mathematical flow of the atten
 
 ---
 
-## 1. Initialization
-1.1. **Environment Setup:** Verify the existence of the `/dataset`, `/database`, and `/attendance` directories.
-1.2. **Database Connection & Migration:** Establish a persistent connection to `attendance.db`. Check the current schema and **automatically migrate** the tables (adding `user_id` to `students` and `course_id` to `attendance`) if transitioning from an older version.
-1.3. **Flask Web Server:** Initialize the Flask application, setting up secret keys for session management and defining routes for Admin, Faculty, and Student roles.
-1.4. **Encoding Pre-loading:** Retrieve all unique facial embeddings (128-D vectors) and associated names from the database into the system's runtime memory for instantaneous matching.
-1.5. **Hardware Activation:** Initialize the primary webcam capture object using OpenCV for both registration and detection.
+## 1. Initialization & Environment Setup
+1.1. **Directory Verification:** Check for `/dataset`, `/database`, and `/encodings`. Create them if missing.
+1.2. **Database Integrity:** Establish connection to `attendance.db`. Perform **Schema Migration** to support Role-Based Access (Users, Courses, Enrollments).
+1.3. **Encoding Synchronization:** 
+   * Check if `encodings.pkl` exists.
+   * If missing or images were added, trigger `FaceEncoder` to scan `/dataset` and generate 128-D facial embeddings.
+1.4. **Web Server Ready:** Initialize Flask with session security to manage Admin (Management), Faculty (Operations), and Student (View) roles.
 
-## 2. User Interaction / Role-Based Access
-2.1. **Web UI Dashboard:** Present a secure login screen. Upon authentication, route the user to their specific dashboard based on their role:
-   * **🛡️ Admin:** Access to user creation, course management, and enrollment.
-   * **👨‍🏫 Faculty:** Access to student face registration and starting attendance sessions.
-   * **🎓 Student:** Access to personal attendance history.
-2.2. **Request Handling:** Wait for user-specified triggers via HTTP POST/GET requests (e.g., clicking "Start Attendance" or "Register Student").
+## 2. Phase 1: Robust Face Registration (Faculty Only)
+2.1. **Target Identification:** Faculty selects a student from the "Registered in DB" list.
+2.2. **Hardware Initialization:**
+   * **Wait & Retry:** Attempt to open VideoCapture(0). If busy (transitioning from attendance), wait 1.5s and retry (up to 3 attempts).
+   * **Warmup:** Grab 15 discarded frames to allow auto-exposure/white-balance to stabilize.
+2.3. **Pre-Capture Countdown:** Display a 3-second visual countdown on the UI to ensure student readiness.
+2.4. **Face Localization & Validation:**
+   * Use Haar Cascade with adjusted sensitivity (`minNeighbors=4`) for high-speed detection.
+   * Verify face presence before triggering a snapshot.
+2.5. **Sequential Acquisition:** Capture 5 high-quality frames with a 0.8s interval to ensure variety in facial angles.
+2.6. **Persistence & Flow:**
+   * Save images to `/dataset/{Name}/`. 
+   * **Stay-on-Page:** Redirect the Faculty back to the registration list to allow immediate next-student registration.
 
-## 3. Phase 1: Face Registration (Faculty Only)
-3.1. **Identity Input:** Faculty selects a student account and enters their name via the Web UI registration form.
-3.2. **Image Acquisition:** The system triggers `FaceCapturer`, opening the webcam feed and capturing 5 sequential frames of the student's face.
-3.3. **Face Localization:** Use the HOG (Histogram of Oriented Gradients) model to detect the face within each captured frame.
-3.4. **Feature Extraction:** Convert normalized facial images into a structural 128-dimensional numeric vector (encoding).
-3.5. **Data Persistence:** Save the raw images to `/dataset/Name/` and store the averaged 128D encoding directly into the SQLite `students` table, linked to the student's `user_id`.
+## 3. Phase 2: Asynchronous Attendance Tracking
+3.1. **Session Trigger:** Faculty selects a specific `course_id` and starts attendance.
+3.2. **Thread Management:** Launch `FaceDetector.start_recognition` in a **Background Daemon Thread** to prevent blocking the Flask main loop and UI.
+3.3. **Real-time Recognition Loop:**
+   * **Performance Tuning:** Process every other frame. Resize frames to 25% (1/4th) for CPU optimization.
+   * **Detection (HOG):** Detect bounding boxes for all faces in the frame.
+   * **Status Display:** If `len(faces) == 0`, display **"STATUS: Waiting for people..."** to the operator.
+3.4. **Stop Signal Reactivity:** Continuously monitor a `stop_signal` flag. Interrupt the loop immediately if the flag is set via the Web UI "Stop" button.
 
-## 4. Phase 2: Face Detection
-4.1. **Stream Capture:** Acquire real-time video frames from the webcam at a standard resolution (640x480).
-4.2. **Preprocessing:** Resize the frame to 1/4th its original size to reduce computational overhead on the CPU.
-4.3. **Color Space Conversion:** Convert the frame from BGR (OpenCV default) to RGB.
-4.4. **HOG Modeling:** Execute the HOG detection algorithm to identify all facial bounding boxes present in the frame.
+## 4. Phase 3: 128-D Facial Matching
+4.1. **Feature Extraction:** Convert live detected faces into 128-dimensional numeric vectors (embeddings).
+4.2. **Euclidean Distance Comparison:**
+   * Measure the distance ($d$) between the live vector ($p$) and all known database vectors ($q$):
+     $$d(p, q) = \sqrt{\sum_{i=1}^{n} (p_i - q_i)^2}$$
+4.3. **Match Verification:**
+   * Compare against a tolerance threshold (0.6).
+   * **Confidence Score Calibration:** $Confidence = \max(0, \text{round}((1.0 - d) \times 100, 2))$.
+   * A match is accepted only if $Confidence > 50\%$.
 
-## 5. Phase 3: Face Recognition
-5.1. **Live Encoding:** Compute the 128D facial encoding for every face detected in the live frame.
-5.2. **Distance Calculation:** Use **Euclidean Distance** to measure the variance between the live encoding and the pre-loaded database encodings.
-   * *Formula:* $d(p, q) = \sqrt{\sum_{i=1}^{n} (p_i - q_i)^2}$
-5.3. **Similarity Comparison:** Apply a strict threshold (e.g., 0.5). If the minimum distance is below the threshold, a "Match" is confirmed.
-5.4. **Confidence Scoring:** Convert the distance into a percentage: $Confidence = \max(0, (1 - distance) \times 100)$.
-5.5. **Classification:** 
-   * If Match found → Retrieve Name; Set status to "Recognized".
-   * If Distance > Threshold → Assign identity as "Unknown".
+## 5. Phase 4: Intelligent Attendance Lifecycle
+5.1. **Marking Logic:** Upon a successful match, pass Name + Course ID to `AttendanceManager`.
+5.2. **Duplicate Suppression:** Verify that the student hasn't already been marked for the **SAME course** on the **SAME day**.
+5.3. **Feedback Banner:** If successful, display a green success banner on the camera stream for 3 seconds: **"ATTENDANCE MARKED: {Name}"**.
+5.4. **Database Record:** Insert entry: `(Name, course_id, Date, Time)`.
 
-## 6. Phase 4: Attendance Marking
-6.1. **Verification Logic:** Receive the recognized Name and the active `course_id`.
-6.2. **Duplicate Prevention:** Query the `attendance` table using the `Name`, `course_id`, and `Current Date`.
-6.3. **Attendance Insertion:** 
-   * If record count == 0 → Insert row: `(Name, course_id, Date, Time)`.
-   * If record count > 0 → Reject entry (Prevent multiple logs for the same course on the same day).
-6.4. **Visual Feedback:** Render the name, confidence score, and timestamp on the GUI window in real-time.
-
-## 7. Phase 5: Database & Report Management
-7.1. **Relational Integrity:** Ensure the SQLite database maintains links between Users, Students, Courses, and Attendance records.
-7.2. **Persistence Guarantee:** Commit SQL transactions immediately to ensure data durability.
-7.3. **CSV Compilation:** The `AttendanceManager` extracts logs and exports them to a `.csv` file in the `/attendance` directory with timestamped filenames for external reporting.
-
-## 8. End of Session
-8.1. **Loop Continuity:** The recognition window runs until the user presses **'q'**, returning them to the Web Dashboard.
-8.2. **Resource Release:** Release the webcam hardware and gracefully close UI windows after each session.
-8.3. **Final Status:** Provide visual feedback on the dashboard summarizing the action taken (e.g., "Successfully registered {student}" or "Attendance session complete").
+## 6. Phase 5: Resource Cleanup & Reporting
+6.1. **Manual Termination:** Click **"🛑 Stop Attendance"** in the Web UI.
+6.2. **Graceful Release:** 
+   * Set `stop_signal = True`.
+   * Wait for thread loop to break.
+   * Release camera hardware.
+   * **Event Pump:** Call `cv2.waitKey(1)` 15 times to ensure the OS destroys all UI windows completely.
+6.3. **Dashboard Sync:** Verification status badges (✅ Captured vs ❌ No Face) are updated dynamically by scanning `/dataset`.
+6.4. **CSV Export:** Generate detailed attendance logs as CSV files for faculty review.
 
 ---
-*Algorithm designed for high-performance local execution and secure role-based management.*
+*Optimized for high-stability local execution without internet dependency.*
