@@ -28,14 +28,19 @@ class AttendanceManager:
         # Fetch attendance from DB
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
-                query = "SELECT id, name, date, time FROM attendance WHERE date = ?"
+                query = """
+                    SELECT a.id, a.name, c.course_name, a.date, a.time 
+                    FROM attendance a 
+                    LEFT JOIN courses c ON a.course_id = c.id 
+                    WHERE a.date = ?
+                """
                 df = pd.read_sql_query(query, conn, params=(current_date,))
 
             if df.empty:
                 print(f"[INFO] No attendance records found for {current_date}.")
                 
                 # Auto-create empty CSV if not exists as requested
-                df = pd.DataFrame(columns=["id", "name", "date", "time"])
+                df = pd.DataFrame(columns=["id", "name", "course_name", "date", "time"])
                 df.to_csv(csv_filename, index=False)
                 return False
 
@@ -54,7 +59,12 @@ class AttendanceManager:
 
         try:
             with sqlite3.connect(self.db_manager.db_path) as conn:
-                query = "SELECT id, name, date, time FROM attendance WHERE date LIKE ?"
+                query = """
+                    SELECT a.id, a.name, c.course_name, a.date, a.time 
+                    FROM attendance a 
+                    LEFT JOIN courses c ON a.course_id = c.id 
+                    WHERE a.date LIKE ?
+                """
                 df = pd.read_sql_query(query, conn, params=(f"{current_month}-%",))
 
             if df.empty:
