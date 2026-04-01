@@ -7,12 +7,19 @@ class FaceDetector:
     def __init__(self, encoder, attendance_manager):
         self.encoder = encoder
         self.attendance_manager = attendance_manager
+        self.stop_signal = False # Flag to stop the loop externally
         
         # Load known encodings
         self.known_face_encodings, self.known_face_names = self.encoder.load_encodings()
 
+    def stop_recognition(self):
+        """Sets the signal to stop the recognition loop."""
+        self.stop_signal = True
+
     def start_recognition(self, course_id=None):
         """Starts the webcam and recognizes faces in real-time."""
+        self.stop_signal = False # Reset signal
+        
         # Load latest encodings from file
         self.known_face_encodings, self.known_face_names = self.encoder.load_encodings()
         
@@ -21,13 +28,17 @@ class FaceDetector:
             return
 
         print("\n[INFO] Starting video stream for Live Attendance...")
-        print("[INFO] Press 'q' to stop tracking.\n")
+        print("[INFO] Press 'q' or use the Web UI to stop tracking.\n")
         
         # Open webcam
         video_capture = cv2.VideoCapture(0)
         if not video_capture.isOpened():
             print("[ERROR] Could not open webcam.")
             return
+
+        # Camera Warmup
+        for _ in range(5):
+            video_capture.read()
 
         # Tracking for auto-close feature
         last_success_time = None
@@ -36,7 +47,7 @@ class FaceDetector:
         # Optimization: process every other frame
         process_this_frame = True
 
-        while True:
+        while not self.stop_signal:
             # Grab a single frame of video
             ret, frame = video_capture.read()
             if not ret:
@@ -105,18 +116,17 @@ class FaceDetector:
                 cv2.putText(frame, label_name, (left + 6, bottom - 20), font, 0.5, (255, 255, 255), 1)
                 cv2.putText(frame, datetime.now().strftime("%H:%M:%S"), (left + 6, bottom - 4), font, 0.4, (255, 255, 255), 1)
 
-            # --- Visual Feedback & Auto-Close Logic ---
+            # --- Visual Feedback & Manual Stop Logic ---
             if last_success_time:
                 elapsed = (datetime.now() - last_success_time).total_seconds()
                 if elapsed < 3.0:
                     # Draw a large success banner
                     cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 255, 0), cv2.FILLED)
                     cv2.putText(frame, success_message, (50, 65), font, 1.2, (255, 255, 255), 3)
-                    cv2.putText(frame, f"Closing in {int(4-elapsed)}s...", (frame.shape[1]-200, 150), font, 0.7, (0, 255, 0), 2)
                 else:
-                    # Automatically close after the success message duration
-                    print(f"[INFO] Auto-closing session for {success_message}")
-                    break
+                    # Clear success message after 3 seconds but keep tracking
+                    last_success_time = None
+                    success_message = ""
 
             # Display timestamp at the corner
             cv2.putText(frame, f"System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 
@@ -131,3 +141,4 @@ class FaceDetector:
         # Release handle to the webcam
         video_capture.release()
         cv2.destroyAllWindows()
+        self.stop_signal = False # Reset for next session

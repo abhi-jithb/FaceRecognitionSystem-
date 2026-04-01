@@ -6,9 +6,13 @@ from src.attendance_manager import AttendanceManager
 from src.detector import FaceDetector
 from src.encoder import FaceEncoder
 from src.capture import FaceCapturer
+import threading
 
 app = Flask(__name__)
 app.secret_key = "secret_key_for_demo"
+
+# Global reference for recognition thread
+recognition_thread = None
 
 # Initialize Managers
 db = DatabaseManager()
@@ -140,7 +144,11 @@ def faculty_dashboard():
     if session.get('role') != 'faculty':
         return redirect(url_for('dashboard'))
     courses = db.get_courses_by_faculty(session['user_id'])
-    return render_template('faculty.html', courses=courses)
+    
+    global recognition_thread
+    is_tracking = recognition_thread is not None and recognition_thread.is_alive()
+    
+    return render_template('faculty.html', courses=courses, is_tracking=is_tracking)
 
 @app.route('/faculty/start_attendance/<int:course_id>')
 @login_required
@@ -148,13 +156,27 @@ def start_attendance(course_id):
     if session.get('role') != 'faculty':
         return redirect(url_for('dashboard'))
     
-    # Check if course belongs to faculty (simple check)
-    # For demo, we just proceed
-    flash(f"Starting attendance for course ID {course_id}. Close the camera window (press 'q') to finish.")
+    global recognition_thread
+    if recognition_thread and recognition_thread.is_alive():
+        flash("An attendance session is already active. Please stop it before starting a new one.")
+        return redirect(url_for('faculty_dashboard'))
     
-    # This will block the response until the window is closed
-    detector.start_recognition(course_id=course_id)
+    # Start recognition in a separate thread to avoid blocking Flask
+    recognition_thread = threading.Thread(target=detector.start_recognition, kwargs={'course_id': course_id})
+    recognition_thread.daemon = True # Ensure thread dies with main process
+    recognition_thread.start()
     
+    flash(f"Attendance session started. The camera window should pop up shortly.")
+    return redirect(url_for('faculty_dashboard'))
+
+@app.route('/faculty/stop_attendance')
+@login_required
+def stop_attendance():
+    if session.get('role') != 'faculty':
+        return redirect(url_for('dashboard'))
+        
+    detector.stop_recognition()
+    flash("Stop signal sent to attendance session.")
     return redirect(url_for('faculty_dashboard'))
 
 @app.route('/faculty/register_student', methods=['GET', 'POST'])
@@ -165,6 +187,13 @@ def register_student():
         
     if request.method == 'POST':
         student_name = request.form.get('student_name')
+        
+        # Check if camera is busy with attendance
+        global recognition_thread
+        if recognition_thread and recognition_thread.is_alive():
+            flash("Camera is busy with an attendance session. Please stop it before registering a student.")
+            return redirect(url_for('faculty_dashboard'))
+
         # Trigger capture
         success = capturer.capture_faces(student_name)
         if success:
@@ -173,14 +202,27 @@ def register_student():
             if encoded:
                 flash(f"Successfully registered {student_name}")
             else:
-                flash("Captured but failed to encode")
+                flash(f"Captured images for {student_name} but failed to extract facial features. Try better lighting.")
         else:
-            flash("Capture failed")
+            flash("Capture failed. Ensure your webcam is connected and the window was not closed early.")
         return redirect(url_for('faculty_dashboard'))
         
-    # List of students not yet registered? (Optional)
-    students = db.get_users_by_role('student')
-    return render_template('register_student.html', students=students)
+    # Get all students from DB
+    raw_students = db.get_users_by_role('student')
+    students_with_status = []
+    
+    # Check capture status for each student
+    dataset_path = "dataset"
+    for s_id, s_name in raw_students:
+        user_dir = os.path.join(dataset_path, s_name)
+        has_images = os.path.exists(user_dir) and len([f for f in os.listdir(user_dir) if f.endswith(('.jpg', '.jpeg', '.png'))]) > 0
+        students_with_status.append({
+            'id': s_id,
+            'name': s_name,
+            'registered': has_images
+        })
+
+    return render_template('register_student.html', students=students_with_status)
 
 # --- Student Views ---
 

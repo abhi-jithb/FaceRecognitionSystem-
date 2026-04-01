@@ -19,9 +19,17 @@
         
         <div class="card">
             <h3>Registered Students in DB:</h3>
-            <ul>
+            <p style="font-size: 0.9rem; margin-bottom: 1rem;">Students must have a "Captured" status before they can mark attendance.</p>
+            <ul style="list-style: none; padding: 0;">
                 {% for s in students %}
-                    <li>{{ s[1] }}</li>
+                    <li style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                        <span>{{ s.name }}</span>
+                        {% if s.registered %}
+                            <span class="role-badge role-student" style="background-color: #27ae60;">✅ Captured</span>
+                        {% else %}
+                            <span class="role-badge role-admin" style="background-color: #7f8c8d;">❌ No Face Capture</span>
+                        {% endif %}
+                    </li>
                 {% endfor %}
             </ul>
         </div>
