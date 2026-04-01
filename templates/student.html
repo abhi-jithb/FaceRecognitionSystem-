@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>🎓 Student Record: {{ session.username }}</h1>
+    
+    <div class="card">
+        <h2>⏱️ Your Attendance History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Course Name</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r[1] }}</td>
+                    <td>{{ r[2] }}</td>
+                    <td>{{ r[3] }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">No attendance records found yet. Keep attending classes!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 2rem; text-align: center;">
+        <p>If you see any issues, contact your course faculty.</p>
+    </div>
+
+{% endblock %}

@@ -11,8 +11,11 @@ class FaceDetector:
         # Load known encodings
         self.known_face_encodings, self.known_face_names = self.encoder.load_encodings()
 
-    def start_recognition(self):
+    def start_recognition(self, course_id=None):
         """Starts the webcam and recognizes faces in real-time."""
+        # Load latest encodings from file
+        self.known_face_encodings, self.known_face_names = self.encoder.load_encodings()
+        
         if not self.known_face_encodings:
             print("[ERROR] No encodings loaded. Please register users first.")
             return
@@ -67,7 +70,7 @@ class FaceDetector:
 
                             # Mark attendance if confidence > threshold
                             if confidence > 55.0:
-                                self.attendance_manager.mark_attendance(name)
+                                self.attendance_manager.mark_attendance(name, course_id=course_id)
                             else:
                                 name = "Unknown"
                                 

@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>📊 Attendance Reports Dashboard</h1>
+    
+    <div class="card">
+        <h2>📑 Recent Attendance Records</h2>
+        <p>This report shows logs for all courses or courses you are assigned to.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Course Name</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r[0] }}</td>
+                    <td>{{ r[1] }}</td>
+                    <td>{{ r[2] }}</td>
+                    <td>{{ r[3] }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No attendance activity has been recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 2rem; text-align: center;">
+        <p>Showing most recent activity first.</p>
+        <a href="{{ url_for('dashboard') }}"><button style="background-color: #7f8c8d;">Back to Dashboard</button></a>
+    </div>
+
+{% endblock %}

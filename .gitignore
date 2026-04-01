@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+attendance/*.csv
+database/attendance.db
+encodings/encodings.pkl
+dataset/
+.DS_Store
+.vscode/
+.idea/
+.env
+venv/
+env/
+dist/
+build/
+*.egg-info/
+flask_session/

@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div style="max-width: 400px; margin: 0 auto; text-align: center;">
+        <h2>🔐 User Login</h2>
+        <div class="card">
+            <form method="POST">
+                <div>
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required autofocus>
+                </div>
+                <div>
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" style="width: 100%;">Sign In</button>
+            </form>
+            <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">
+                Demo Credentials:<br>
+                <strong>Admin:</strong> admin / admin123
+            </p>
+        </div>
+    </div>
+{% endblock %}

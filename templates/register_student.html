@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>👤 Student Face Registration</h1>
+    <div style="max-width: 600px; margin: 0 auto;">
+        <div class="card">
+            <h2>📷 Step 1: Capture Face</h2>
+            <p>Ensure the student is sitting in front of the camera. The system will capture 5 images for better recognition.</p>
+            <form method="POST">
+                <div>
+                    <label for="student_name">Enter Student Username (Matching DB)</label>
+                    <input type="text" id="student_name" name="student_name" placeholder="e.g. john_doe" required>
+                </div>
+                <button type="submit" style="width: 100%; background-color: #e67e22;">Start Capture Process</button>
+            </form>
+            <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                <strong>Note:</strong> This will open a new camera window. Press 'q' to stop early (if needed).
+            </p>
+        </div>
+        
+        <div class="card">
+            <h3>Registered Students in DB:</h3>
+            <ul>
+                {% for s in students %}
+                    <li>{{ s[1] }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <p style="text-align: center;"><a href="{{ url_for('faculty_dashboard') }}">Back to Dashboard</a></p>
+    </div>
+{% endblock %}

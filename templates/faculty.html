@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>👨‍🏫 Faculty Dashboard</h1>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+        <div class="card">
+            <h2>📚 My Assigned Courses</h2>
+            <p>Select a course to start the attendance recognition window.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in courses %}
+                    <tr>
+                        <td>{{ c[1] }}</td>
+                        <td>
+                            <a href="{{ url_for('start_attendance', course_id=c[0]) }}" style="text-decoration: none;">
+                                <button style="background-color: #27ae60;">📷 Start Attendance</button>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                        <tr><td colspan="2">No courses assigned to you.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>🧑‍🎓 Student Registration</h2>
+            <p>Need to register a new face for a student? Use this button to open the capture module.</p>
+            <form action="{{ url_for('register_student') }}" method="GET">
+                <button type="submit" style="width: 100%; background-color: #e67e22;">👥 Register Student Face</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+        <h2>📊 Quick View: Today's Attendance</h2>
+        <a href="{{ url_for('reports') }}" style="text-decoration: none;"><button>📑 View Detailed Reports</button></a>
+    </div>
+
+{% endblock %}

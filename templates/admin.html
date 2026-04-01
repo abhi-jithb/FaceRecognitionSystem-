@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>🛡️ Admin Dashboard</h1>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div class="card">
+            <h2>👨‍🏫 Register Faculty</h2>
+            <form action="{{ url_for('create_faculty') }}" method="POST">
+                <div>
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="e.g. prof_smith" required>
+                </div>
+                <div>
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Set temporary password" required>
+                </div>
+                <button type="submit">Create Faculty Account</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>🎓 Register Student (Account Only)</h2>
+            <form action="{{ url_for('create_student') }}" method="POST">
+                <div>
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="e.g. john_doe" required>
+                </div>
+                <div>
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Set temporary password" required>
+                </div>
+                <button type="submit">Create Student Account</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+        <div class="card">
+            <h2>📚 Create Course</h2>
+            <form action="{{ url_for('create_course') }}" method="POST">
+                <div>
+                    <label>Course Name</label>
+                    <input type="text" name="course_name" placeholder="e.g. Intro to AI" required>
+                </div>
+                <div>
+                    <label>Assign Faculty</label>
+                    <select name="faculty_id" required>
+                        <option value="">Select Faculty...</option>
+                        {% for f in faculties %}
+                            <option value="{{ f[0] }}">{{ f[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit">Create Course</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>🔗 Enroll Student in Course</h2>
+            <form action="{{ url_for('enroll_student') }}" method="POST">
+                <div>
+                    <label>Select Student</label>
+                    <select name="student_id" required>
+                        <option value="">Select Student...</option>
+                        {% for s in students %}
+                            <option value="{{ s[0] }}">{{ s[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>Select Course</label>
+                    <select name="course_id" required>
+                        <option value="">Select Course...</option>
+                        {% for c in courses %}
+                            <option value="{{ c[0] }}">{{ c[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit">Enroll Student</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📑 Current Courses</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Course Name</th>
+                    <th>Assigned Faculty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in courses %}
+                <tr>
+                    <td>{{ c[0] }}</td>
+                    <td>{{ c[1] }}</td>
+                    <td>{{ c[2] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 2rem; text-align: right;">
+        <a href="{{ url_for('reports') }}" style="text-decoration: none;"><button>📊 View Global Attendance Report</button></a>
+    </div>
+
+{% endblock %}

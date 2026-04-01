@@ -10,11 +10,11 @@ class AttendanceManager:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def mark_attendance(self, name):
+    def mark_attendance(self, name, course_id=None):
         """Marks attendance in the database."""
-        success = self.db_manager.mark_attendance(name)
+        success = self.db_manager.mark_attendance(name, course_id=course_id)
         if success:
-            print(f"[SUCCESS] Attendance marked for {name} today!")
+            print(f"[SUCCESS] Attendance marked for {name} in course {course_id} today!")
         # We don't print anything if already marked to avoid spamming the console
         # since detection happens many times per second.
         return success
