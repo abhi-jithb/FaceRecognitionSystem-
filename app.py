@@ -196,12 +196,14 @@ def student_dashboard():
 @login_required
 def reports():
     # Admin can see all, faculty see their courses
-    if session.get('role') == 'admin':
+    role = session.get('role')
+    if role == 'admin':
         records = db.get_attendance_report()
-    elif session.get('role') == 'faculty':
-        # Simple: faculty can see all for now or filter by their courses
-        records = db.get_attendance_report()
+    elif role == 'faculty':
+        # Faculty can only see records for their assigned courses
+        records = db.get_attendance_report(faculty_id=session['user_id'])
     else:
+        # Students should use their own dashboard
         return redirect(url_for('dashboard'))
         
     return render_template('reports.html', records=records)

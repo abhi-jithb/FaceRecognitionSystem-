@@ -207,7 +207,7 @@ class DatabaseManager:
             cursor.execute("SELECT id, course_name FROM courses WHERE faculty_id = ?", (faculty_id,))
             return cursor.fetchall()
 
-    def get_attendance_report(self, course_id=None, student_name=None):
+    def get_attendance_report(self, course_id=None, student_name=None, faculty_id=None):
         """Generic report generator."""
         query = """
             SELECT a.name, c.course_name, a.date, a.time 
@@ -222,6 +222,9 @@ class DatabaseManager:
         if student_name:
             query += " AND a.name = ?"
             params.append(student_name)
+        if faculty_id:
+            query += " AND c.faculty_id = ?"
+            params.append(faculty_id)
         
         query += " ORDER BY a.date DESC, a.time DESC"
         
