@@ -69,6 +69,24 @@ class DatabaseManager:
                 )
             ''')
             
+            # Check if 'students' table needs migration (adding user_id column)
+            cursor.execute("PRAGMA table_info(students)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'user_id' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE students ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                except sqlite3.OperationalError:
+                    pass
+            
+            # Check if 'attendance' table needs migration (adding course_id column)
+            cursor.execute("PRAGMA table_info(attendance)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'course_id' not in columns:
+                try:
+                    cursor.execute("ALTER TABLE attendance ADD COLUMN course_id INTEGER REFERENCES courses(id)")
+                except sqlite3.OperationalError:
+                    pass
+            
             # Add a default admin if none exists
             cursor.execute("SELECT * FROM users WHERE role = 'admin'")
             if not cursor.fetchone():
