@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import os
 import sys
+# Fix for Wayland issues with OpenCV/Qt on Gnome
+os.environ["QT_QPA_PLATFORM"] = "xcb"
 from src.database import DatabaseManager
 from src.attendance_manager import AttendanceManager
 from src.detector import FaceDetector
@@ -116,6 +118,19 @@ def create_student():
         flash("Error creating student")
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/faculty/create_student', methods=['POST'])
+@login_required
+def faculty_create_student():
+    if session.get('role') != 'faculty':
+        return redirect(url_for('dashboard'))
+    username = request.form.get('username')
+    password = request.form.get('password')
+    if db.create_user(username, password, 'student'):
+        flash(f"Student {username} account created. Now use Step 2 to register their face.")
+    else:
+        flash("Error creating student (username might exist)")
+    return redirect(url_for('faculty_dashboard'))
+
 @app.route('/admin/create_course', methods=['POST'])
 @login_required
 @admin_required
@@ -146,7 +161,7 @@ def faculty_dashboard():
     courses = db.get_courses_by_faculty(session['user_id'])
     
     global recognition_thread
-    is_tracking = recognition_thread is not None and recognition_thread.is_alive()
+    is_tracking = detector.is_active
     
     return render_template('faculty.html', courses=courses, is_tracking=is_tracking)
 
@@ -176,6 +191,11 @@ def stop_attendance():
         return redirect(url_for('dashboard'))
         
     detector.stop_recognition()
+    # Strategic delay: Give the recognition thread a moment to receive the signal
+    # and update the is_active state before we redirect and re-render the dashboard.
+    import time
+    time.sleep(1.0)
+    
     flash("Stop signal sent to attendance session.")
     return redirect(url_for('faculty_dashboard'))
 
@@ -205,7 +225,7 @@ def register_student():
                 flash(f"Captured images for {student_name} but failed to extract facial features. Try better lighting.")
         else:
             flash("Capture failed. Ensure your webcam is connected and the window was not closed early.")
-        return redirect(url_for('faculty_dashboard'))
+        return redirect(url_for('register_student'))
         
     # Get all students from DB
     raw_students = db.get_users_by_role('student')
@@ -250,6 +270,26 @@ def reports():
         
     return render_template('reports.html', records=records)
 
+@app.route('/reports/export/<type>')
+@login_required
+def export_report(type):
+    from flask import send_file
+    
+    if type == 'daily':
+        filepath = attend_manager.export_daily_report()
+    elif type == 'monthly':
+        filepath = attend_manager.export_monthly_report()
+    else:
+        flash("Invalid report type")
+        return redirect(url_for('reports'))
+        
+    if filepath and os.path.exists(filepath):
+        return send_file(filepath, as_attachment=True)
+    else:
+        flash("Error generating report. Ensure attendance records exist for the selected period.")
+        return redirect(url_for('reports'))
+
 if __name__ == '__main__':
-    # Threaded=False to avoid issues with OpenCV camera on some systems
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # IMPORTANT: use_reloader=False is REQUIRED when using camera resources.
+    # The auto-reloader creates a child process that can leave the camera hung if it restarts.
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True, use_reloader=False)

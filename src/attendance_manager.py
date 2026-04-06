@@ -46,10 +46,10 @@ class AttendanceManager:
 
             df.to_csv(csv_filename, index=False)
             print(f"[SUCCESS] Daily attendance exported to {csv_filename}")
-            return True
+            return csv_filename
         except Exception as e:
             print(f"[ERROR] Failed to export daily CSV: {e}")
-            return False
+            return None
             
     def export_monthly_report(self):
         """Exports the current month's attendance to a single CSV file."""
@@ -73,7 +73,7 @@ class AttendanceManager:
 
             df.to_csv(csv_filename, index=False)
             print(f"[SUCCESS] Monthly summary exported to {csv_filename}")
-            return True
+            return csv_filename
         except Exception as e:
             print(f"[ERROR] Failed to export monthly CSV: {e}")
-            return False
+            return None

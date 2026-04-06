@@ -28,6 +28,21 @@
             </tbody>
         </table>
     </div>
+    
+    <div class="card" style="display: flex; justify-content: center; gap: 1rem; background-color: #ecf0f1;">
+        <div style="text-align: center;">
+            <h3>📅 Export Reports</h3>
+            <p>Download the attendance records as CSV for offline viewing or printing.</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <a href="{{ url_for('export_report', type='daily') }}">
+                    <button style="background-color: #27ae60;">📥 Download Daily CSV</button>
+                </a>
+                <a href="{{ url_for('export_report', type='monthly') }}">
+                    <button style="background-color: #2980b9;">📥 Download Monthly Summary</button>
+                </a>
+            </div>
+        </div>
+    </div>
 
     <div style="margin-top: 2rem; text-align: center;">
         <p>Showing most recent activity first.</p>
